@@ -1,0 +1,24 @@
+{
+    "exclude" : {
+        "permissions" : [
+            "users/login:POST"
+        ],
+        "routes" : [
+            "users",
+            "roles",
+            "permissions",
+            "sendmails",
+            "user_tokens"
+        ]
+    },
+    "additionnal" : {
+        "permissions" : [
+            "KNOWLEDGE_UNLIMITED"
+        ]
+    },
+    "roles" : {
+        "ADMIN" : [
+            "*"
+        ]
+    }
+}

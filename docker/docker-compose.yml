@@ -1,0 +1,26 @@
+services:
+    sylo:
+        container_name: '${COMPOSE_PROJECT_NAME}'
+        image: 'ghcr.io/gerard-loic/sylo:${COMPOSE_SYLO_VERSION}'
+        restart: ${COMPOSE_RESTART_POLICY}
+        env_file:
+            - ../.env
+        volumes:
+            - '../logs/:/app/storage/logs/'
+            - '../entities/:/app/entities/'
+            - '../mails/:/app/mails/'
+            - '../config/:/app/config/'
+        labels:
+            - "traefik.enable=true"
+            - "traefik.docker.network=traefik-network"
+            - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${COMPOSE_PROJECT_HOST}`)"
+            - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=${COMPOSE_TRAEFIK_ENTRYPOINT}"
+            - "traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=${COMPOSE_PROJECT_PORT}"
+        networks:
+            - traefik-network
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
+networks:
+  traefik-network:
+    external: true

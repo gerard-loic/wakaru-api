@@ -1,0 +1,40 @@
+# Traefik pour la production (VPS PulseHeberg).
+# HTTP -> HTTPS automatique + certificats Let's Encrypt (challenge HTTP-01).
+services:
+  traefik:
+    image: 'traefik:v3.6'
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik-network"
+      - "--entrypoints.http.address=:80"
+      - "--entrypoints.https.address=:443"
+      # Redirection systematique HTTP -> HTTPS
+      - "--entrypoints.http.http.redirections.entrypoint.to=https"
+      - "--entrypoints.http.http.redirections.entrypoint.scheme=https"
+      # TLS par defaut sur l'entrypoint https : les services n'ont besoin
+      # que de "entrypoints=https", pas de label certresolver.
+      - "--entrypoints.https.http.tls=true"
+      - "--entrypoints.https.http.tls.certresolver=letsencrypt"
+      # Resolveur ACME / Let's Encrypt
+      - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "traefik-letsencrypt:/letsencrypt"
+    networks:
+      - traefik-network
+
+volumes:
+  traefik-letsencrypt:
+
+networks:
+  traefik-network:
+    external: true
