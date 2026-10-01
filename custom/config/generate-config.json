@@ -1,0 +1,50 @@
+{
+    "exclude" : {
+        "permissions" : [
+            "users/login:POST"
+        ],
+        "routes" : [
+            "users",
+            "roles",
+            "permissions",
+            "sendmails",
+            "user_tokens"
+        ]
+    },
+    "additionnal" : {
+        "permissions" : [
+            "KNOWLEDGE_UNLIMITED"
+        ]
+    },
+    "roles" : {
+        "ADMIN" : [
+            "*"
+        ],
+        "USER" : [
+            "categories:GET",
+            "categories:QUERY",
+            "exercise:GET",
+            "exercise:QUERY",
+            "exercise_items:GET",
+            "exercise_items:QUERY",
+            "grammar_rules:GET",
+            "grammar_rules:QUERY",
+            "hiraganas:GET",
+            "hiraganas:QUERY",
+            "kanjis:GET",
+            "kanjis:QUERY",
+            "kanji_compositions:GET",
+            "kanji_compositions:QUERY",
+            "katakanas:GET",
+            "katakanas:QUERY",
+            "levels:GET",
+            "levels:QUERY",
+            "sentences:GET",
+            "sentences:QUERY",
+            "themes:GET",
+            "themes:QUERY",
+            "words:GET",
+            "words:QUERY"
+        ]
+    }
+}
