@@ -9,7 +9,13 @@ class WordModel(EntityModel):
     url_prefix = "/words"
     relationships = [
         ManyToOne(attribute="level", target="level", foreign_key="level_id"),
-        ManyToOne(attribute="theme", target="theme", foreign_key="theme_id"),
+        ManyToMany(
+            attribute="themes",
+            target="theme",
+            association_table="theme_word",
+            local_key="word_id",
+            remote_key="theme_id",
+        ),
         ManyToMany(
             attribute="sentences",
             target="sentence",

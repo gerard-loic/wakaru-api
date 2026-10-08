@@ -1,5 +1,5 @@
 from app.crud.model import EntityModel, register_model
-from app.crud.relationships import ManyToMany
+from app.crud.relationships import ManyToOne
 
 
 @register_model
@@ -8,11 +8,6 @@ class Kanji_CompositionModel(EntityModel):
     table_name = "kanji_compositions"
     url_prefix = "/kanji_compositions"
     relationships = [
-        ManyToMany(
-            attribute="kanjis",
-            target="kanji",
-            association_table="kanji_kanji_composition",
-            local_key="kanji_composition_id",
-            remote_key="kanji_id",
-        ),
+        ManyToOne(attribute="kanji_record", target="kanji", foreign_key="kanji_id"),
+        ManyToOne(attribute="kanjiword", target="kanjiword", foreign_key="kanjiword_id"),
     ]

@@ -9,13 +9,19 @@ class KanjiModel(EntityModel):
     url_prefix = "/kanjis"
     relationships = [
         ManyToOne(attribute="level", target="level", foreign_key="level_id"),
-        ManyToOne(attribute="theme", target="theme", foreign_key="theme_id"),
+        ManyToMany(
+            attribute="themes",
+            target="theme",
+            association_table="theme_kanji",
+            local_key="kanji_id",
+            remote_key="theme_id",
+        ),
         ManyToMany(
             attribute="kanji_compositions",
-            target="kanji_composition",
-            association_table="kanji_kanji_composition",
+            target="kanjiword",
+            association_table="kanji_compositions",
             local_key="kanji_id",
-            remote_key="kanji_composition_id",
+            remote_key="kanjiword_id",
         ),
         ManyToMany(
             attribute="sentences",
