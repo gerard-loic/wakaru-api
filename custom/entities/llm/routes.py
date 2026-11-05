@@ -12,13 +12,13 @@ from custom.entities.llm.methods import create_lesson as create_lesson_method
 class CreateLessonValidator(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    schema_version: str
     theme: dict[str, Any]
-    vocabulary: list[dict[str, Any]]
+    words: list[dict[str, Any]]
     kanji: dict[str, Any]
-    kanjiwords: list[dict[str, Any]]
-    grammar_rules: dict[str, Any]
+    grammar: dict[str, Any]
     sentences: list[dict[str, Any]]
-    exercise: dict[str, Any]
+    exercises: list[dict[str, Any]]
 
 
 def build_router() -> APIRouter:

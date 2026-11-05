@@ -8,7 +8,7 @@ class Grammar_RuleModel(EntityModel):
     table_name = "grammar_rules"
     url_prefix = "/grammar_rules"
     relationships = [
-        ManyToOne(attribute="category", target="category", foreign_key="category_id"),
+        ManyToOne(attribute="grammar_category", target="grammar_category", foreign_key="grammar_category_id"),
         ManyToOne(attribute="level", target="level", foreign_key="level_id"),
         ManyToOne(attribute="theme", target="theme", foreign_key="theme_id"),
     ]

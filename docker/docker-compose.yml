@@ -12,6 +12,7 @@ services:
         volumes:
             - '../logs/:/app/logs/'
             - '../custom/:/app/custom/'
+            - '../media/:/app/media/'
         labels:
             - "traefik.enable=true"
             - "traefik.docker.network=traefik-network"

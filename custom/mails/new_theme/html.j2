@@ -1,0 +1,23 @@
+{% extends "gabarit.j2" %}
+
+{% block content %}
+  <p style="margin: 0 0 16px; font-size: 20px; font-weight: bold; color: #000000;">Bonjour {{ name }},</p>
+  <p style="margin: 0 0 16px;">Découvrez le thème de la semaine sur <strong style="color: #ff6600;">Wakaru</strong> :</p>
+  <p style="margin: 0 0 16px; font-size: 24px; line-height: 1.3; font-weight: bold; color: #c24e00;">{{ theme_name }}</p>
+  {% if theme_image %}
+  {# Largeur utile du gabarit : 600px moins 2 x 24px de marge. #}
+  <img src="{{ theme_image }}" alt="{{ theme_name }}" width="552" style="display: block; width: 100%; max-width: 552px; height: auto; margin: 0 0 8px; border: 0; border-radius: 6px;">
+  {% if image_credit %}
+  <p style="margin: 0 0 16px; font-size: 12px; color: #888888;">Image : {{ image_credit }}{% if image_licence %} ({{ image_licence }}){% endif %}</p>
+  {% endif %}
+  {% endif %}
+  <p style="margin: 0 0 24px;">{{ theme_description }}</p>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 24px;">
+    <tr>
+      <td align="center" style="background-color: #e65c00; border-radius: 6px;">
+        <a href="{{ site_url }}" style="display: inline-block; padding: 14px 28px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none;">Découvrir le thème</a>
+      </td>
+    </tr>
+  </table>
+  <p style="margin: 0;">Bon apprentissage,<br>L'équipe Wakaru</p>
+{% endblock %}

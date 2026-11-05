@@ -1,0 +1,2 @@
+{# `safe` : le sujet est du texte brut, l'échappement HTML afficherait « d&#39;été ». #}
+{% if is_test %}[Test] {% endif %}Nouveau thème sur Wakaru : {{ theme_name|safe }}

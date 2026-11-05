@@ -1,5 +1,5 @@
 from app.crud.model import EntityModel, register_model
-from app.crud.relationships import ManyToMany, ManyToOne
+from app.crud.relationships import ManyToOne, OneToMany
 
 
 @register_model
@@ -10,18 +10,5 @@ class SentenceModel(EntityModel):
     relationships = [
         ManyToOne(attribute="level", target="level", foreign_key="level_id"),
         ManyToOne(attribute="theme", target="theme", foreign_key="theme_id"),
-        ManyToMany(
-            attribute="kanjis",
-            target="kanji",
-            association_table="sentence_kanji",
-            local_key="sentence_id",
-            remote_key="kanji_id",
-        ),
-        ManyToMany(
-            attribute="words",
-            target="word",
-            association_table="sentence_word",
-            local_key="sentence_id",
-            remote_key="word_id",
-        ),
+        OneToMany(attribute="sentence_tokens", target="sentence_token", foreign_key="sentence_id"),
     ]

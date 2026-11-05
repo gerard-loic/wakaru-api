@@ -1,0 +1,12 @@
+{# `safe` : texte brut, l'échappement HTML afficherait « d&#39;été ». #}
+Bonjour {{ name|safe }},
+
+Découvrez le thème de la semaine sur Wakaru : {{ theme_name|safe }}
+
+{{ theme_description|safe }}
+
+Découvrir le thème : {{ site_url }}
+
+Bon apprentissage,
+L'équipe Wakaru
+{{ site_url }}

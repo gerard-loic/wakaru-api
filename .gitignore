@@ -5,3 +5,8 @@ logs/*
 !logs/.gitkeep
 .vscode/
 __pycache__
+media/*
+!media/.gitkeep
+.env.local
+.env.*.local
+*.py[cod]

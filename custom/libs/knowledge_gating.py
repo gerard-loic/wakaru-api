@@ -21,11 +21,12 @@ Usage (voir `custom/entities/hiragana/routes.py`) :
         )
 """
 
-from typing import Type
+from typing import Callable, Literal, Type
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import and_, select
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -38,9 +39,24 @@ from app.crud.ordering import compile_order_by
 from app.crud.routes import build_crud_router
 from app.database import get_db
 from app.exceptions import NotFoundError
-from app.responses import success_response
+from app.responses import serialize, success_response
 
 _settings = get_settings()
+
+
+class _KnowledgeSettings(BaseSettings):
+    """Seuils de classement d'un `user_knowledge` (voir `_knowledge_type`), lus dans
+    le `.env` du projet (préfixe `WAKARU_`, ignorés par les settings Sylo)."""
+
+    # Nombre minimum de réponses (mistakes + corrects) pour juger la maîtrise.
+    knowledge_min_attempts: int = 5
+    # Rapport corrects/mistakes à partir duquel l'élément est considéré maîtrisé.
+    knowledge_min_ratio: float = 2.0
+
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="WAKARU_", extra="ignore")
+
+
+_knowledge_settings = _KnowledgeSettings()
 
 KNOWLEDGE_UNLIMITED_UID = "KNOWLEDGE_UNLIMITED"
 
@@ -50,6 +66,14 @@ _ORDERBY_DESCRIPTION = (
 _FILTER_DESCRIPTION = (
     "Expression de filtre sur les colonnes de l'entité, ex: \"status == 'active'\"."
 )
+_WITH_KNOWLEDGE_DESCRIPTION = (
+    "Ajoute à chaque élément sa ligne `user_knowledge` pour l'utilisateur courant (null si aucune)."
+)
+_KNOWLEDGE_DESCRIPTION = (
+    "Ne garde que les éléments dont la maîtrise (`user_knowledge.type`) fait partie de cette liste : "
+    "aucun, encours, maitrise, arevoir."
+)
+KNOWLEDGE_TYPES = ("aucun", "encours", "maitrise", "arevoir")
 
 
 def _parse_with(with_: str | None) -> list[str]:
@@ -71,6 +95,10 @@ class _QueryPayload(BaseModel):
     page: int | None = Field(default=None, ge=1)
     orderby: str | None = Field(default=None, description=_ORDERBY_DESCRIPTION)
     with_: list[str] | None = Field(default=None, alias="with")
+    with_knowledge: bool = Field(default=False, description=_WITH_KNOWLEDGE_DESCRIPTION)
+    knowledge: list[Literal["aucun", "encours", "maitrise", "arevoir"]] | None = Field(
+        default=None, description=_KNOWLEDGE_DESCRIPTION
+    )
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
@@ -98,6 +126,102 @@ def _knowledge_filter(db: Session, request: Request, model: type[EntityModel]) -
     return _known_entity_ids_clause(model, user_id)
 
 
+def _knowledge_type(mistakes: int, corrects: int) -> str:
+    """"aucun" sans réponse, "encours" sous `knowledge_min_attempts` réponses, puis
+    "maitrise" ou "arevoir" selon que corrects/mistakes atteint `knowledge_min_ratio`
+    (aucune erreur = maîtrisé)."""
+    total = mistakes + corrects
+    if total == 0:
+        return "aucun"
+    if total < _knowledge_settings.knowledge_min_attempts:
+        return "encours"
+    if mistakes == 0 or corrects / mistakes >= _knowledge_settings.knowledge_min_ratio:
+        return "maitrise"
+    return "arevoir"
+
+
+def knowledge_type_conditions() -> dict[str, ColumnElement]:
+    """Conditions SQL sur `user_knowledges` équivalentes à `_knowledge_type`, par
+    type ("encours", "maitrise", "arevoir" ; "aucun" = aucune réponse, `total == 0`)."""
+    uk = get_model("user_knowledge").table.c
+    mistakes = func.coalesce(uk.mistakes, 0)
+    corrects = func.coalesce(uk.corrects, 0)
+    total = mistakes + corrects
+    min_attempts = _knowledge_settings.knowledge_min_attempts
+    mastered = or_(mistakes == 0, corrects >= mistakes * _knowledge_settings.knowledge_min_ratio)
+    return {
+        "aucun": total == 0,
+        "encours": and_(total > 0, total < min_attempts),
+        "maitrise": and_(total >= min_attempts, mastered),
+        "arevoir": and_(total >= min_attempts, ~mastered),
+    }
+
+
+def _knowledge_type_filter(
+    request: Request, model: type[EntityModel], types: list[str]
+) -> ColumnElement | None:
+    """Clause SQL équivalente à `_knowledge_type` : ne garde que les lignes dont le
+    type calculé pour l'utilisateur courant fait partie de `types`. Une ligne sans
+    `user_knowledge` (ou sans réponse) est "aucun". `None` si `types` couvre tout."""
+    if set(KNOWLEDGE_TYPES) <= set(types):
+        return None
+    user_id = getattr(request.state, "user_id", None)
+    uk = get_model("user_knowledge").table.c
+    conditions = knowledge_type_conditions()
+
+    def entity_ids(condition: ColumnElement):
+        return select(uk.entity_id).where(
+            uk.entity_name == model.name,
+            uk.user_id == user_id,
+            uk.deleted_at.is_(None),
+            # Un NULL ferait échouer tout le `NOT IN` du cas "aucun".
+            uk.entity_id.is_not(None),
+            condition,
+        )
+
+    clauses = [
+        model.pk_column.in_(entity_ids(conditions[t])) for t in types if t in conditions and t != "aucun"
+    ]
+    if "aucun" in types:
+        clauses.append(model.pk_column.not_in(entity_ids(~conditions["aucun"])))
+    return or_(*clauses) if clauses else false()
+
+
+def _serialize_knowledge(row) -> dict | None:
+    if row is None:
+        return None
+    return {**serialize(row), "type": _knowledge_type(row.mistakes or 0, row.corrects or 0)}
+
+
+def _attach_knowledge(db: Session, request: Request, model: type[EntityModel], items: list) -> list[dict]:
+    """Sérialise `items` en ajoutant à chacun sa ligne `user_knowledge` (ou `None`)
+    pour l'utilisateur courant — une seule requête `IN` pour toute la page."""
+    user_id = getattr(request.state, "user_id", None)
+    pk_name = model.pk_name()
+    ids = [getattr(item, pk_name) for item in items]
+    by_entity_id: dict[str, object] = {}
+    if ids and user_id is not None:
+        user_knowledge = get_model("user_knowledge")
+        uk = user_knowledge.python_class
+        rows = (
+            db.query(uk)
+            .filter(
+                uk.entity_name == model.name,
+                uk.user_id == user_id,
+                uk.deleted_at.is_(None),
+                uk.entity_id.in_(ids),
+            )
+            .all()
+        )
+        for row in rows:
+            # Clé en str : `entity_id` et la PK de l'entité peuvent ne pas avoir le même type Python.
+            by_entity_id.setdefault(str(row.entity_id), row)
+    return [
+        {**serialize(item), "user_knowledge": _serialize_knowledge(by_entity_id.get(str(getattr(item, pk_name))))}
+        for item in items
+    ]
+
+
 def _combine(user_clause: ColumnElement | None, knowledge_clause: ColumnElement | None) -> ColumnElement | None:
     if user_clause is not None and knowledge_clause is not None:
         return and_(user_clause, knowledge_clause)
@@ -110,10 +234,14 @@ def build_knowledge_gated_router(
     *,
     create_validator: Type[BaseModel],
     update_validator: Type[BaseModel],
+    detail_extra: Callable[[Session, object], dict] | None = None,
 ) -> APIRouter:
     """Équivalent de `build_crud_router`, mais les routes `list`/`get`/`QUERY` sont
     restreintes aux lignes connues de l'utilisateur courant (voir le docstring du
-    module). `create`/`update`/`delete` sont déléguées telles quelles."""
+    module). `create`/`update`/`delete` sont déléguées telles quelles.
+
+    `detail_extra(db, obj)` renvoie des champs calculés à ajouter à la réponse de
+    `GET /{item_id}` uniquement."""
     router = build_crud_router(
         model,
         methods,
@@ -132,6 +260,7 @@ def build_knowledge_gated_router(
         with_: str | None = Query(
             None, alias="with", description="Relations à charger, séparées par des virgules"
         ),
+        with_knowledge: bool = Query(False, description=_WITH_KNOWLEDGE_DESCRIPTION),
         db: Session = Depends(get_db),
     ):
         resolved_offset = _resolve_offset(page, offset, limit)
@@ -144,6 +273,8 @@ def build_knowledge_gated_router(
             filter_clause=_knowledge_filter(db, request, model),
             order_by=order_clauses,
         )
+        if with_knowledge:
+            items = _attach_knowledge(db, request, model, items)
         return success_response(
             items,
             meta={
@@ -156,6 +287,8 @@ def build_knowledge_gated_router(
 
     def _run_query(payload: _QueryPayload, request: Request, db: Session):
         user_clause = compile_filter(payload.filter, model) if payload.filter else None
+        if payload.knowledge is not None:
+            user_clause = _combine(user_clause, _knowledge_type_filter(request, model, payload.knowledge))
         filter_clause = _combine(user_clause, _knowledge_filter(db, request, model))
         order_clauses = compile_order_by(payload.orderby, model) if payload.orderby else None
         resolved_offset = _resolve_offset(payload.page, payload.offset, payload.limit)
@@ -167,6 +300,8 @@ def build_knowledge_gated_router(
             filter_clause=filter_clause,
             order_by=order_clauses,
         )
+        if payload.with_knowledge:
+            items = _attach_knowledge(db, request, model, items)
         return success_response(
             items,
             meta={
@@ -193,6 +328,7 @@ def build_knowledge_gated_router(
         with_: str | None = Query(
             None, alias="with", description="Relations à charger, séparées par des virgules"
         ),
+        with_knowledge: bool = Query(False, description=_WITH_KNOWLEDGE_DESCRIPTION),
         db: Session = Depends(get_db),
     ):
         casted_id = model.cast_pk(item_id)
@@ -206,6 +342,9 @@ def build_knowledge_gated_router(
             if visible is None:
                 raise NotFoundError(model.name, item_id)
         obj = methods.get_or_404(db, casted_id, with_=_parse_with(with_))
-        return success_response(obj)
+        data = _attach_knowledge(db, request, model, [obj])[0] if with_knowledge else serialize(obj)
+        if detail_extra is not None:
+            data.update(detail_extra(db, obj))
+        return success_response(data)
 
     return router
