@@ -20,6 +20,7 @@ from custom.libs.passwordresethelper import (
     read_reset_token_user_id,
 )
 from custom.libs.traininghelper import TrainingHelper
+from custom.libs.unsubscribehelper import read_unsubscribe_token
 
 logger = logging.getLogger("sylo_api")
 
@@ -146,6 +147,14 @@ class UserMethods(CoreUserMethods):
         )
         # Le commit de `update` valide aussi la révocation des sessions.
         self.update(db, user.id, {"password": password, "initial_token": None})
+
+    def unsubscribe(self, db: Session, token: str) -> None:
+        """Coupe les emails d'information à partir du token reçu par mail (POST
+        /users/unsubscribe). Un compte supprimé depuis l'envoi n'est pas une erreur :
+        il ne reçoit déjà plus rien."""
+        user_id = read_unsubscribe_token(token)
+        if self.get(db, user_id) is not None:
+            self.update(db, user_id, {"is_mailing_allowed": False})
 
     def delete(self, db: Session, item_id: int) -> None:
         """Comme le delete du core (suppression logique et anonymisation), avec en plus

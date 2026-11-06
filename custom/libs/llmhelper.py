@@ -1,6 +1,7 @@
 from custom.libs.modelhelper import ModelHelper
 from custom.libs.mediahelper import MediaHelper
 from custom.libs.traininghelper import TrainingHelper
+from custom.libs.unsubscribehelper import create_unsubscribe_url
 from app.crud.model import get_model
 from app.exceptions import ApiError
 from app.mail.service import get_mail_service
@@ -77,9 +78,9 @@ class LLMHelper:
 
     def notifyUsers(self, theme_id:int)->None:
         """
-        Annonce le thème aux utilisateurs qui l'ont reçu à l'import (gabarit `new_theme`,
-        sujet préfixé par [Test]). À appeler après le commit de l'import. Un échec est
-        journalisé et n'interrompt pas les envois suivants.
+        Annonce le thème aux utilisateurs qui l'ont reçu à l'import et acceptent les mails
+        (gabarit `new_theme`, sujet préfixé par [Test]). À appeler après le commit de
+        l'import. Un échec est journalisé et n'interrompt pas les envois suivants.
         """
         themes = get_model("theme").table
         users = get_model("user").table
@@ -87,9 +88,10 @@ class LLMHelper:
 
         theme = self._db.execute(select(themes).where(themes.c.id == theme_id)).first()
         recipients = self._db.execute(
-            select(users.c.email, users.c.first_name)
+            select(users.c.id, users.c.email, users.c.first_name)
             .where(
                 users.c.deleted_at.is_(None),
+                users.c.is_mailing_allowed.is_(True),
                 users.c.id.in_(
                     select(knowledges.c.user_id).where(
                         knowledges.c.entity_name == "theme",
@@ -102,13 +104,18 @@ class LLMHelper:
         ).all()
 
         mail_service = get_mail_service()
-        for email, first_name in recipients:
+        for user_id, email, first_name in recipients:
             try:
                 mail_service.send(
                     self._db,
                     to=email,
                     template="new_theme",
-                    context={**themeMailContext(theme), "name" : first_name, "is_test" : True}
+                    context={
+                        **themeMailContext(theme),
+                        "name" : first_name,
+                        "is_test" : True,
+                        "unsubscribe_url" : create_unsubscribe_url(user_id)
+                    }
                 )
             except ApiError as e:
                 #error : le logger sylo_api ignore les niveaux inférieurs

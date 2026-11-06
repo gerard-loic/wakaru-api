@@ -25,6 +25,7 @@
                 <p style="margin: 0 0 4px;"><strong style="color: #ff6600;">Wakaru</strong> · 分かる, « j'ai compris »</p>
                 <p style="margin: 0 0 4px;"><a href="{{ site_url }}" style="color: #c24e00; text-decoration: none;">{{ site_url.split('://')[-1] }}</a></p>
                 <p style="margin: 0;">Cet email vous a été envoyé automatiquement, merci de ne pas y répondre.</p>
+                {% block footer_extra %}{% endblock %}
               </td>
             </tr>
           </table>

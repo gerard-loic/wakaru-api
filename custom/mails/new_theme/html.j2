@@ -21,3 +21,9 @@
   </table>
   <p style="margin: 0;">Bon apprentissage,<br>L'équipe Wakaru</p>
 {% endblock %}
+
+{% block footer_extra %}
+  {% if unsubscribe_url %}
+  <p style="margin: 4px 0 0;"><a href="{{ unsubscribe_url }}" style="color: #888888;">Ne plus recevoir ces emails</a></p>
+  {% endif %}
+{% endblock %}

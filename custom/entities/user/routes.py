@@ -18,6 +18,8 @@ class RegisterValidator(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=8, max_length=128)
+    # Consentement aux mails : décoché par défaut, le front doit l'envoyer explicitement.
+    is_mailing_allowed: bool = False
     # Jeton renvoyé par le widget captcha du front (Turnstile : champ cf-turnstile-response).
     captcha_token: str = Field(min_length=1)
 
@@ -47,6 +49,12 @@ class ResetPasswordValidator(BaseModel):
         return value
 
 
+class UnsubscribeValidator(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=255)
+
+
 class UpdateMeValidator(BaseModel):
     """Champs modifiables par l'utilisateur sur son propre compte. Liste blanche : ni
     `roles`, ni `level_id`, ni `initial_token`. Les champs sont optionnels mais `null`
@@ -58,6 +66,7 @@ class UpdateMeValidator(BaseModel):
     first_name: str = Field(None, min_length=1, max_length=100)
     last_name: str = Field(None, min_length=1, max_length=100)
     password: str = Field(None, min_length=8, max_length=128)
+    is_mailing_allowed: bool = Field(None)
     # Obligatoire pour changer `email` ou `password` (voir UserMethods.update_me).
     current_password: str = Field(None, min_length=1)
 
@@ -97,6 +106,16 @@ def build_router(model, methods, *, create_validator, update_validator):
         return success_response(None)
 
     mark_public(f"{model.prefix()}/reset-password", "POST")
+
+    @router.post("/unsubscribe")
+    def unsubscribe(payload: UnsubscribeValidator, db: Session = Depends(get_db)):
+        """Désinscription depuis le lien des emails d'information : public, le token
+        fait office d'authentification. En POST car les scanners de messagerie ouvrent
+        les liens des mails : c'est la page du front qui appelle cette route."""
+        methods.unsubscribe(db, payload.token)
+        return success_response(None)
+
+    mark_public(f"{model.prefix()}/unsubscribe", "POST")
 
     @router.get("/me")
     def get_me(

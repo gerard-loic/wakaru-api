@@ -1,7 +1,8 @@
 """Active le dernier thème créé pour les utilisateurs non supprimés du rôle `USER` :
 1. renseigne `publicated_at` (sauf s'il l'est déjà) ;
 2. crée leurs `user_knowledge` sur le thème et son contenu, et leur programme ;
-3. leur envoie l'annonce (gabarit `new_theme`).
+3. envoie l'annonce (gabarit `new_theme`) à ceux qui acceptent les mails
+   (`is_mailing_allowed`) ; les autres reçoivent quand même le thème à l'étape 2.
 
 Les étapes 1 et 2 sont validées ensemble, avant le premier envoi.
 
@@ -53,6 +54,7 @@ def main() -> None:
     from app.main import app  # noqa: F401  (déclenche le mapping ORM et `custom.setup`)
     from custom.entities.user.methods import USER_ROLE_UID, UserMethods
     from custom.libs.llmhelper import themeMailContext
+    from custom.libs.unsubscribehelper import create_unsubscribe_url
 
     db = SessionLocal()
     try:
@@ -71,14 +73,19 @@ def main() -> None:
 
         if args.test_to:
             users = []
-            recipients = [(args.test_to, "Test")]
+            recipients = [(args.test_to, "Test", None)]
             already_sent = set()
         else:
             user_table = get_model("user").table
             roles = get_model("role").table
             user_role = get_association_table("user_role")
             users = db.execute(
-                select(user_table.c.id, user_table.c.email, user_table.c.first_name)
+                select(
+                    user_table.c.id,
+                    user_table.c.email,
+                    user_table.c.first_name,
+                    user_table.c.is_mailing_allowed,
+                )
                 .join(user_role, user_role.c.user_id == user_table.c.id)
                 .join(roles, roles.c.id == user_role.c.role_id)
                 .where(
@@ -89,16 +96,22 @@ def main() -> None:
                 .distinct()
                 .order_by(user_table.c.id)
             ).all()
-            recipients = [(user.email, user.first_name) for user in users]
+            # Filtré ici et non dans la requête : `users` sert aussi à l'activation.
+            recipients = [
+                (user.email, user.first_name, create_unsubscribe_url(user.id))
+                for user in users
+                if user.is_mailing_allowed
+            ]
             sendmails = get_model("sendmail").table
             already_sent = set(
                 db.execute(select(sendmails.c.to).where(sendmails.c.subject == subject)).scalars()
             )
 
-        pending = [(email, name) for email, name in recipients if email not in already_sent]
+        pending = [recipient for recipient in recipients if recipient[0] not in already_sent]
         print(f"Thème        : {theme.name} (id={theme.id})")
         print(f"Publication  : {theme.publicated_at or 'à faire'}")
         print(f"Utilisateurs : {len(users)}")
+        print(f"Sans mailing : {sum(not user.is_mailing_allowed for user in users)}")
         print(f"Sujet        : {subject}")
         print(f"Image        : {theme.image or 'aucune'}")
         print(f"Destinataires: {len(pending)} ({len(recipients) - len(pending)} déjà servis)")
@@ -120,13 +133,13 @@ def main() -> None:
 
         mail_service = get_mail_service()
         failures = 0
-        for email, first_name in pending:
+        for email, first_name, unsubscribe_url in pending:
             try:
                 mail_service.send(
                     db,
                     to=email,
                     template="new_theme",
-                    context={**context, "name": first_name},
+                    context={**context, "name": first_name, "unsubscribe_url": unsubscribe_url},
                 )
             except ApiError as exc:
                 failures += 1

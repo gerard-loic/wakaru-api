@@ -36,7 +36,7 @@ Active le dernier thème créé pour les utilisateurs non supprimés du rôle `U
 
 1. renseigne `publicated_at` sur le thème, s'il ne l'est pas déjà ;
 2. crée leurs `user_knowledge` sur le thème et son contenu, ainsi que leur programme. Les éléments déjà connus gardent leur progression ;
-3. leur envoie le mail `new_theme`, un mail individuel par utilisateur.
+3. envoie le mail `new_theme`, un mail individuel par utilisateur, à ceux dont `is_mailing_allowed` est vrai. Il contient le lien de désinscription : `WAKARU_UNSUBSCRIBE_SECRET` doit être renseigné, sinon la commande s'arrête avant toute modification.
 
 | Option | Description |
 | --- | --- |

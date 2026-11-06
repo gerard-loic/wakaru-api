@@ -14,6 +14,8 @@ class _MailSettings(BaseSettings):
 
     # URL publique du site (sans slash final), ex: https://wakaru.fr
     site_url: str = "https://wakaru.fr"
+    # Destinataire des remarques envoyées via POST /feedback. Vide = route indisponible.
+    feedback_email: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="WAKARU_", extra="ignore")
 

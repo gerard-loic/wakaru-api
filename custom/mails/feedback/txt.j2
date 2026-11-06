@@ -1,0 +1,9 @@
+{# Les .j2 sont auto-échappés, même en texte brut : sans ce bloc, une apostrophe du message deviendrait &#39;. #}
+{% autoescape false %}
+{{ type_label }}
+
+Utilisateur : {{ first_name }} {{ last_name }} (id {{ user_id }})
+Email : {{ email }}
+
+{{ message }}
+{% endautoescape %}

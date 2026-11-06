@@ -10,3 +10,7 @@ Découvrir le thème : {{ site_url }}
 Bon apprentissage,
 L'équipe Wakaru
 {{ site_url }}
+{% if unsubscribe_url %}
+
+Ne plus recevoir ces emails : {{ unsubscribe_url|safe }}
+{% endif %}

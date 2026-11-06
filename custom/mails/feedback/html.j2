@@ -1,0 +1,10 @@
+{% extends "gabarit.j2" %}
+
+{% block content %}
+  <p style="margin: 0 0 16px; font-size: 20px; font-weight: bold; color: #000000;">{{ type_label }}</p>
+  <p style="margin: 0 0 16px;">
+    <strong>Utilisateur :</strong> {{ first_name }} {{ last_name }} (id {{ user_id }})<br>
+    <strong>Email :</strong> <a href="mailto:{{ email }}" style="color: #c24e00;">{{ email }}</a>
+  </p>
+  <p style="margin: 0; white-space: pre-wrap;">{{ message }}</p>
+{% endblock %}
