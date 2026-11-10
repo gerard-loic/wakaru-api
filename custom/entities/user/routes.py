@@ -55,6 +55,12 @@ class UnsubscribeValidator(BaseModel):
     token: str = Field(min_length=1, max_length=255)
 
 
+class ResumeValidator(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=255)
+
+
 class UpdateMeValidator(BaseModel):
     """Champs modifiables par l'utilisateur sur son propre compte. Liste blanche : ni
     `roles`, ni `level_id`, ni `initial_token`. Les champs sont optionnels mais `null`
@@ -67,6 +73,8 @@ class UpdateMeValidator(BaseModel):
     last_name: str = Field(None, min_length=1, max_length=100)
     password: str = Field(None, min_length=8, max_length=128)
     is_mailing_allowed: bool = Field(None)
+    # Mode vacances : les nouveaux thèmes ne sont plus attribués (voir activate_new_theme).
+    is_onvacation: bool = Field(None)
     # Obligatoire pour changer `email` ou `password` (voir UserMethods.update_me).
     current_password: str = Field(None, min_length=1)
 
@@ -116,6 +124,16 @@ def build_router(model, methods, *, create_validator, update_validator):
         return success_response(None)
 
     mark_public(f"{model.prefix()}/unsubscribe", "POST")
+
+    @router.post("/resume")
+    def resume(payload: ResumeValidator, db: Session = Depends(get_db)):
+        """Sortie du mode vacances depuis le lien de l'annonce d'un thème : public, le
+        token fait office d'authentification. Active le thème de l'annonce et renvoie
+        son id. En POST pour la même raison que /unsubscribe."""
+        theme_id = methods.resume(db, payload.token)
+        return success_response({"theme_id": theme_id})
+
+    mark_public(f"{model.prefix()}/resume", "POST")
 
     @router.get("/me")
     def get_me(

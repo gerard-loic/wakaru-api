@@ -21,6 +21,7 @@ from custom.libs.passwordresethelper import (
 )
 from custom.libs.traininghelper import TrainingHelper
 from custom.libs.unsubscribehelper import read_unsubscribe_token
+from custom.libs.vacationhelper import InvalidResumeTokenError, read_resume_token
 
 logger = logging.getLogger("sylo_api")
 
@@ -155,6 +156,29 @@ class UserMethods(CoreUserMethods):
         user_id = read_unsubscribe_token(token)
         if self.get(db, user_id) is not None:
             self.update(db, user_id, {"is_mailing_allowed": False})
+
+    def resume(self, db: Session, token: str) -> int:
+        """Sortie du mode vacances depuis le lien de l'annonce d'un thème (POST
+        /users/resume) : l'utilisateur repasse actif et reçoit le thème de l'annonce.
+        Renvoie l'id du thème. Rappeler la méthode est sans effet (voir
+        `grant_theme_knowledges`)."""
+        user_id, theme_id = read_resume_token(token)
+        if self.get(db, user_id) is None:
+            raise InvalidResumeTokenError()
+        theme = get_model("theme").table
+        published = db.execute(
+            select(theme.c.id).where(
+                theme.c.id == theme_id,
+                theme.c.deleted_at.is_(None),
+                theme.c.publicated_at.is_not(None),
+            )
+        ).first()
+        if published is None:
+            raise InvalidResumeTokenError()
+        self.grant_theme_knowledges(db, user_id, theme_id)
+        # Le commit de `update` valide aussi les connaissances du thème.
+        self.update(db, user_id, {"is_onvacation": False})
+        return theme_id
 
     def delete(self, db: Session, item_id: int) -> None:
         """Comme le delete du core (suppression logique et anonymisation), avec en plus

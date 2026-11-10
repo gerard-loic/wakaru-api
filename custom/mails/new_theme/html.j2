@@ -12,10 +12,15 @@
   {% endif %}
   {% endif %}
   <p style="margin: 0 0 24px;">{{ theme_description }}</p>
+  {% if on_vacation %}
+  <p style="margin: 0 0 24px; padding: 12px 16px; background-color: #fff3e8; border-left: 4px solid #e65c00; border-radius: 4px;">
+    Ton compte est en mode <strong>« en vacances »</strong> : ce thème n'a pas été ajouté à ton programme et tu ne le verras pas sur Wakaru, sauf si tu te remets en actif.
+  </p>
+  {% endif %}
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 24px;">
     <tr>
       <td align="center" style="background-color: #e65c00; border-radius: 6px;">
-        <a href="{{ site_url }}" style="display: inline-block; padding: 14px 28px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none;">Découvrir le thème</a>
+        <a href="{{ resume_url if on_vacation else site_url }}" style="display: inline-block; padding: 14px 28px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: bold; color: #ffffff; text-decoration: none;">{% if on_vacation %}Je me remets au japonais et j'explore le thème{% else %}Découvrir le thème{% endif %}</a>
       </td>
     </tr>
   </table>

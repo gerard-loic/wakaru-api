@@ -9,6 +9,10 @@ from app.responses import serialize
 from custom.libs.knowledge_gating import _serialize_knowledge, knowledge_type_conditions
 
 
+#Nombre maximum d'éléments non maîtrisés parmi lesquels le focus "progressive" tire
+PROGRESSIVE_WINDOW = 12
+
+
 def resolve_model(table: str) -> type[EntityModel]:
     """Retrouve le modèle Sylo à partir de son nom d'entité (`theme`) ou de sa
     table (`themes`)."""
@@ -169,7 +173,10 @@ class ModelHelper:
         - "weakness" : seulement les lignes dont le `user_knowledge` est
           "arevoir" (même règle que `knowledge_gating`) ;
         - "theme" : seulement les lignes rattachées au thème de la semaine de
-          l'utilisateur (dernier thème créé parmi ceux qu'il connaît).
+          l'utilisateur (dernier thème créé parmi ceux qu'il connaît) ;
+        - "progressive" : seulement les lignes non maîtrisées, limitées aux
+          PROGRESSIVE_WINDOW premières selon la colonne `order` (la table doit
+          avoir cette colonne).
 
         Les lignes dont l'id figure dans `avoid_ids` ne sont jamais choisies.
 
@@ -240,7 +247,7 @@ class ModelHelper:
         """Requête des lignes de `table` liées à `user_id` dans
         `user_knowledges`, restreintes par `focus` et `filters` (voir
         `getRandom`). Sélectionne la ligne et son `user_knowledge`."""
-        if focus not in ("random", "weakness", "theme"):
+        if focus not in ("random", "weakness", "theme", "progressive"):
             raise ValueError(f"Focus '{focus}' non supporté.")
 
         model = resolve_model(table)
@@ -260,7 +267,25 @@ class ModelHelper:
             query = query.where(python_class.deleted_at.is_(None))
         for path, value in (filters or {}).items():
             query = query.where(_path_condition(python_class, path, value))
+        if focus == "progressive":
+            query = query.where(model.pk_column.in_(self._progressiveIdsQuery(model, query)))
         return query
+
+    def _progressiveIdsQuery(self, model: type[EntityModel], query: Any) -> Any:
+        """SELECT des ids de la fenêtre du focus "progressive" : parmi les lignes
+        de `query` non maîtrisées, les PROGRESSIVE_WINDOW premières selon la
+        colonne `order`. La fenêtre avance à mesure que l'utilisateur maîtrise
+        les éléments."""
+        if "order" not in model.table.c:
+            raise ValueError(f"Le focus 'progressive' nécessite une colonne 'order' dans '{model.table_name}'.")
+        return (
+            query.where(~knowledge_type_conditions()["maitrise"])
+            .with_only_columns(model.pk_column, maintain_column_froms=True)
+            .order_by(model.table.c.order, model.pk_column)
+            .limit(PROGRESSIVE_WINDOW)
+            #Mêmes tables que la requête englobante : sans ça, SQLAlchemy les corrèlerait
+            .correlate(None)
+        )
 
     def _currentThemeId(self, user_id: Any) -> Any | None:
         """Id du thème de la semaine de `user_id` : le dernier thème créé parmi

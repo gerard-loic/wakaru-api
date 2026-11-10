@@ -15,8 +15,9 @@ class CreateTrainingValidator(BaseModel):
     subject: str
     element_from:str
     element_to:list
-    number:int
     focus:str
+    #Facultatif : par défaut, nb_items du sujet dans TRAININGCONF
+    number:int|None = None
 
 
 def build_router() -> APIRouter:

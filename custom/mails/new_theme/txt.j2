@@ -5,7 +5,13 @@ Découvrez le thème de la semaine sur Wakaru : {{ theme_name|safe }}
 
 {{ theme_description|safe }}
 
+{% if on_vacation %}
+Ton compte est en mode « en vacances » : ce thème n'a pas été ajouté à ton programme et tu ne le verras pas sur Wakaru, sauf si tu te remets en actif.
+
+Je me remets au japonais et j'explore le thème : {{ resume_url|safe }}
+{% else %}
 Découvrir le thème : {{ site_url }}
+{% endif %}
 
 Bon apprentissage,
 L'équipe Wakaru

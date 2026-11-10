@@ -44,10 +44,12 @@ class TrainingHelper:
             if subject == "kanjis" and TrainingHelper._countKnown(model, user_id, subject, "random") < MIN_ITEMS:
                 continue
 
-            #Le focus weakness n'est proposé qu'à partir de MIN_ITEMS éléments à revoir
+            #Le focus weakness n'est proposé qu'à partir de MIN_ITEMS éléments à revoir,
+            #le focus progressive tant qu'il reste des éléments non maîtrisés
             focus = [
                 f for f in api["focus"]
-                if f["focus"] != "weakness" or TrainingHelper._countKnown(model, user_id, subject, "weakness") >= MIN_ITEMS
+                if (f["focus"] != "weakness" or TrainingHelper._countKnown(model, user_id, subject, "weakness") >= MIN_ITEMS)
+                and (f["focus"] != "progressive" or TrainingHelper._countKnown(model, user_id, subject, "progressive") > 0)
             ]
             out["subjects"].append({**api, "focus" : focus})
 
@@ -148,12 +150,13 @@ class TrainingHelper:
 
         return out
 
-    def __init__(self, db: Session, user_id:int, subject:str, element_from:str, element_to:list, number:int, focus:str):
+    def __init__(self, db: Session, user_id:int, subject:str, element_from:str, element_to:list, focus:str, number:int|None=None):
         """
         Subjects : words, hiraganas, katakanas, kanjis, sentences, mix
         element_from : char, reading, french, char_or_reading (mix)
         element_to : char, reading, french, char_or_reading (mix)
-        focus : theme, weakness, random
+        focus : theme, weakness, random, progressive (hiraganas et katakanas)
+        number : nombre de questions ; par défaut la clé `nb_items` du sujet dans TRAININGCONF
                 
         """
         
@@ -204,7 +207,7 @@ class TrainingHelper:
         self._subject = subject
         self._element_from = element_from
         self._element_to = element_to
-        self._number = number
+        self._number = number if number is not None else TrainingHelper._nbItems(subject)
         self._focus = focus
 
         #Sujets du mix compatibles avec les éléments demandés et disponibles pour l'utilisateur
@@ -218,17 +221,65 @@ class TrainingHelper:
                 raise Exception("Aucun sujet disponible pour ce mode")
 
 
+    @staticmethod
+    def _nbItems(subject:str)->int:
+        """Nombre de questions d'un sujet : clé `nb_items` de TRAININGCONF, au
+        niveau du sujet ou de son bloc `api` (cas du mix)."""
+        conf = TRAININGCONF[subject]
+        nb_items = conf.get("nb_items", conf.get("api", {}).get("nb_items"))
+        if nb_items is None:
+            raise Exception(f"Configuration non valid : nb_items manquant pour '{subject}'")
+        return nb_items
+
     def getTraining(self)->dict:
         self._out = {
             "items" : []
         }
 
+        #Ids déjà tirés comme item principal, par sujet (pour éviter les doublons)
+        self._used_ids = {}
+        #Dernier id tiré par sujet (pour éviter deux fois le même item d'affilée)
+        self._last_ids = {}
+
         for i in range(self._number):
-            self._out["items"].append(self._getTrainingItem2())
+            self._out["items"].append(self._getTrainingItem())
 
         return self._out
 
-    def _getTrainingItem2(self)->dict:
+    def _getUniqueItem(self, subject:str, conf:dict)->dict|None:
+        """Tire l'item principal d'une question en évitant ceux déjà tirés pour
+        ce sujet. Quand tous les éléments disponibles ont été tirés (plus de
+        questions que d'éléments), un nouveau cycle commence : les doublons
+        deviennent possibles, en évitant si possible de répéter l'item
+        précédent."""
+        used = self._used_ids.setdefault(subject, [])
+        last_id = self._last_ids.get(subject)
+        attempts = [used]
+        if used:
+            #Nouveau cycle : on n'évite plus que le dernier item tiré, puis rien
+            attempts += [[last_id], []] if last_id is not None else [[]]
+
+        for avoid_ids in attempts:
+            item = self._model.getRandom(
+                table=subject,
+                user_id=self._user_id,
+                focus=self._focus,
+                avoid_ids=avoid_ids,
+                load=conf["item_relations"],
+                filters=conf["item_filters"]
+            )
+            if item is not None:
+                break
+        else:
+            return None
+
+        if avoid_ids is not used:
+            used.clear()
+        used.append(item["id"])
+        self._last_ids[subject] = item["id"]
+        return item
+
+    def _getTrainingItem(self)->dict:
         #Finaliser le sujet
         subject = self._subject
         if subject == "mix":
@@ -241,13 +292,7 @@ class TrainingHelper:
         element_from, element_to = self._resolveElements(conf, self._element_from, self._element_to)
 
         #Récupérer l'item principal
-        subject_item = self._model.getRandom(
-            table=subject,
-            user_id=self._user_id,
-            focus=self._focus,
-            load=conf["item_relations"],
-            filters=conf["item_filters"]
-        )
+        subject_item = self._getUniqueItem(subject=subject, conf=conf)
         if subject_item is None:
             raise Exception(f"Aucun élément '{subject}' disponible pour l'utilisateur avec le focus '{self._focus}'")
 
@@ -379,130 +424,3 @@ class TrainingHelper:
         if list_item is None:
             return item[attribute]
         return json.loads(item[attribute])[list_item]
-
-    def _getTrainingItem(self)->dict:
-        subject = self._subject
-        if subject == "mix":
-            subject = random.choice(["words", "hiraganas", "katakanas", "kanjis", "sentences"])
-
-        subject_item = self._model.getRandom(
-            table=subject,
-            user_id=self._user_id,
-            focus=self._focus,
-            load=["partofspeech"],
-            filters={
-                "partofspeech.is_worked_on" : True
-            }
-        )
-
-        item_data = {}
-        if subject == "words":
-            item_data = self._getPrepareWordItem(subject_item=subject_item)
-        elif subject == "hiraganas":
-            item_data = self._getPrepareHiraganaItem(subject_item=subject_item)
-        elif subject == "katakanas":
-            item_data = self._getPrepareKatakanaItem(subject_item=subject_item)
-        elif subject == "kanjis":
-            item_data = self._getPrepareKanjiItem(subject_item=subject_item)
-        elif subject == "sentences":
-            item_data = self._getPrepareSentenceItem(subject_item=subject_item)
-
-        return item_data
-
-    def _getPreparedItem(self, subject_item:dict, subject:str)->dict:
-        conf = _CONF[subject]
-
-        #Preparer l'item sur lequel il y aura des questions
-        item = ""
-        if self._element_from == "char":
-            item = subject_item[conf["text_attribute"]]
-        elif self._element_from == "french":
-            item = json.loads(subject_item["translations"])[0]
-
-
-    def _getPrepareWordItem(self, subject_item:dict)->dict:
-        
-
-        #Preparer l'item sur lequel il y aura des questions
-        item = ""
-        if self._element_from == "char":
-            item = subject_item["writing"]
-        elif self._element_from == "french":
-            item = json.loads(subject_item["translations"])[0]
-
-        out = {
-            "entity" : "words",
-            "id" : subject_item["id"],
-            "text" : item,
-            "questions" : []
-        }
-
-        #Préparer les questions
-        for elmt_to in self._element_to:
-            q_out = {
-                "to" : elmt_to,
-                "propositions" : []
-            }
-
-            props = []
-            ids = [subject_item["id"]]
-            for i in range(3):
-                proposition_item = self._model.getRandom(
-                    table="words",
-                    user_id=self._user_id,
-                    focus="random",
-                    avoid_ids=ids,
-                    load=["partofspeech"],
-                    filters={
-                        "partofspeech.is_worked_on" : True
-                    }
-                )
-                text = ""
-                if elmt_to == "char":
-                    text = proposition_item["writing"]
-                elif elmt_to == "reading":
-                    text = proposition_item["reading"]
-                elif elmt_to == "french":
-                    text = json.loads(proposition_item["translations"])[0]
-
-                p_out = {
-                    "id" : proposition_item["id"],
-                    "text" : text
-                }
-                ids.append(proposition_item["id"])
-                q_out["propositions"].append(p_out)
-
-            
-            text = ""
-            if elmt_to == "char":
-                text = subject_item["writing"]
-            elif elmt_to == "reading":
-                text = subject_item["reading"]
-            elif elmt_to == "french":
-                text = json.loads(subject_item["translations"])[0]
-
-            p_out = {
-                "id" : subject_item["id"],
-                "text" : text
-            }
-            q_out["propositions"].append(p_out)
-            random.shuffle(q_out["propositions"])
-            
-            out["questions"].append(q_out)
-
-        return out
-
-
-
-    def _getPrepareHiraganaItem(self, subject_item:dict)->dict:
-        pass
-
-    def _getPrepareKatakanaItem(self, subject_item:dict)->dict:
-        pass
-
-    def _getPrepareKanjiItem(self, subject_item:dict)->dict:
-        pass
-
-    def _getPrepareSentenceItem(self, subject_item:dict)->dict:
-        pass
-

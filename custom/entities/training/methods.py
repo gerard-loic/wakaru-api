@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from custom.libs.traininghelper import TrainingHelper
 
-def new_training_method(db: Session, user_id:int, subject:str, element_from:str, element_to:list, number:int, focus:str) -> dict:
+def new_training_method(db: Session, user_id:int, subject:str, element_from:str, element_to:list, focus:str, number:int|None=None) -> dict:
 
     t = TrainingHelper(
         db=db,

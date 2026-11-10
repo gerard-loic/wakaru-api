@@ -9,6 +9,7 @@ TRAININGCONF = {
         "item_filters" : {
             "partofspeech.is_worked_on" : True
         },
+        "nb_items" : 15,
         "modes" : [
             {
                 "element_from" : "char",
@@ -76,7 +77,7 @@ TRAININGCONF = {
                     "focus" : "theme"
                 },
                 {
-                    "name" : "Mots sur lesquels vous rencontrez des difficultés",
+                    "name" : "Mots sur lesquels je rencontre des difficultés",
                     "focus" : "weakness"
                 },
                 {
@@ -93,6 +94,7 @@ TRAININGCONF = {
         },
         "item_relations" : [],
         "item_filters" : {},
+        "nb_items" : 15,
         "modes" : [
             {
                 "element_from" : "char",
@@ -156,7 +158,7 @@ TRAININGCONF = {
             ],
             "focus" : [
                 {
-                    "name" : "Kanjis sur lesquels vous rencontrez des difficultés",
+                    "name" : "Kanjis sur lesquels je rencontre des difficultés",
                     "focus" : "weakness"
                 },
                 {
@@ -169,10 +171,12 @@ TRAININGCONF = {
     "hiraganas" : {
         "program_names" : {
             "weakness" : "Travailler les hiraganas difficiles",
-            "random" : "Travailler des hiraganas au hasard"
+            "random" : "Travailler des hiraganas au hasard",
+            "progressive" : "Travailler les hiraganas progressivement"
         },
         "item_relations" : [],
         "item_filters" : {},
+        "nb_items" : 20,
         "modes" : [
             {
                 "element_from" : "reading",
@@ -218,12 +222,16 @@ TRAININGCONF = {
             ],
             "focus" : [
                 {
-                    "name" : "Hiraganas sur lesquels vous rencontrez des difficultés",
+                    "name" : "Hiraganas sur lesquels je rencontre des difficultés",
                     "focus" : "weakness"
                 },
                 {
                     "name" : "Hiraganas aléatoires",
                     "focus" : "random"
+                },
+                {
+                    "name" : "Difficulté progressive",
+                    "focus" : "progressive"
                 }
             ]
         }
@@ -231,10 +239,12 @@ TRAININGCONF = {
     "katakanas" : {
         "program_names" : {
             "weakness" : "Travailler les katakanas difficiles",
-            "random" : "Travailler des katakanas au hasard"
+            "random" : "Travailler des katakanas au hasard",
+            "progressive" : "Travailler les katakanas progressivement"
         },
         "item_relations" : [],
         "item_filters" : {},
+        "nb_items" : 20,
         "modes" : [
             {
                 "element_from" : "reading",
@@ -280,12 +290,16 @@ TRAININGCONF = {
             ],
             "focus" : [
                 {
-                    "name" : "Katakanas sur lesquels vous rencontrez des difficultés",
+                    "name" : "Katakanas sur lesquels je rencontre des difficultés",
                     "focus" : "weakness"
                 },
                 {
                     "name" : "Katakanas aléatoires",
                     "focus" : "random"
+                },
+                {
+                    "name" : "Difficulté progressive",
+                    "focus" : "progressive"
                 }
             ]
         }
@@ -298,6 +312,7 @@ TRAININGCONF = {
         },
         "item_relations" : [],
         "item_filters" : {},
+        "nb_items" : 10,
         "modes" : [
             {
                 "element_from" : "french",
@@ -347,7 +362,7 @@ TRAININGCONF = {
                     "focus" : "theme"
                 },
                 {
-                    "name" : "Phrases sur lesquelles vous rencontrez des difficultés",
+                    "name" : "Phrases sur lesquelles je rencontre des difficultés",
                     "focus" : "weakness"
                 },
                 {
@@ -361,6 +376,7 @@ TRAININGCONF = {
         "api" : {
             "name" : "Aléatoire",
             "subject" : "mix",
+            "nb_items" : 15,
             "modes" : [
                 {
                     "name" : "Du français au japonais",
