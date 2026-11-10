@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.crud.methods import BaseCRUDMethods
 from app.exceptions import NotFoundError
+from custom.libs.knowledge_gating import mastered_corrects
 
 
 class User_KnowledgeMethods(BaseCRUDMethods):
@@ -31,6 +32,20 @@ class User_KnowledgeMethods(BaseCRUDMethods):
         exercice (règles de grammaire). 404 si la ligne n'existe pas, est supprimée
         ou appartient à un autre utilisateur."""
         obj = self._get_owned(db, item_id, user_id)
+        obj.is_new = False
+        db.commit()
+        return self.get(db, item_id)
+
+    def master(self, db: Session, item_id: Any, user_id: int) -> Any:
+        """Passe directement la connaissance `item_id` de `user_id` en "maitrise" :
+        complète `corrects` juste assez pour atteindre les seuils (`mistakes` est
+        conservé) et passe `is_new` à False. Sans effet sur les compteurs si elle est
+        déjà maîtrisée. 404 si la ligne n'existe pas, est supprimée ou appartient à un
+        autre utilisateur."""
+        # Verrou : `corrects` est calculé à partir des compteurs lus, une réponse
+        # simultanée serait sinon écrasée.
+        obj = self._get_owned(db, item_id, user_id, lock=True)
+        obj.corrects = mastered_corrects(obj.mistakes or 0, obj.corrects or 0)
         obj.is_new = False
         db.commit()
         return self.get(db, item_id)

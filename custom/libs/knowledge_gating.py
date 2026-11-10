@@ -21,6 +21,7 @@ Usage (voir `custom/entities/hiragana/routes.py`) :
         )
 """
 
+import math
 from typing import Callable, Literal, Type
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -138,6 +139,14 @@ def _knowledge_type(mistakes: int, corrects: int) -> str:
     if mistakes == 0 or corrects / mistakes >= _knowledge_settings.knowledge_min_ratio:
         return "maitrise"
     return "arevoir"
+
+
+def mastered_corrects(mistakes: int, corrects: int) -> int:
+    """Plus petit nombre de `corrects` (jamais inférieur à l'actuel) qui fait passer
+    la connaissance en "maitrise" selon `_knowledge_type`, `mistakes` restant inchangé."""
+    min_attempts = _knowledge_settings.knowledge_min_attempts
+    needed = max(min_attempts - mistakes, math.ceil(mistakes * _knowledge_settings.knowledge_min_ratio))
+    return max(corrects, needed)
 
 
 def knowledge_type_conditions() -> dict[str, ColumnElement]:

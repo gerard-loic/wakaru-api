@@ -42,6 +42,14 @@ def build_router(model, methods, *, create_validator, update_validator):
         obj = methods.read(db, model.cast_pk(item_id), user_id)
         return success_response(obj)
 
+    @router.post("/{item_id}/master")
+    def master(item_id: str, request: Request, db: Session = Depends(get_db)):
+        user_id = getattr(request.state, "user_id", None)
+        if user_id is None:
+            raise UnauthorizedError("Utilisateur non authentifié.")
+        obj = methods.master(db, model.cast_pk(item_id), user_id)
+        return success_response(obj)
+
     @router.post("/{item_id}/done")
     def done(item_id: str, payload: DoneValidator, request: Request, db: Session = Depends(get_db)):
         user_id = getattr(request.state, "user_id", None)
