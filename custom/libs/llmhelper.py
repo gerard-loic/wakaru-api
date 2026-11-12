@@ -3,7 +3,7 @@ from custom.libs.mediahelper import MediaHelper
 from custom.libs.traininghelper import TrainingHelper
 from custom.libs.unsubscribehelper import create_unsubscribe_url
 from app.crud.model import get_model
-from app.exceptions import ApiError
+from app.exceptions import ApiError, ConflictError
 from app.mail.service import get_mail_service
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -37,6 +37,9 @@ class LLMHelper:
 
     def importData(self)->dict:
         out = {}
+
+        #Vérifications avant toute écriture
+        self._checkGrammar()
 
         #Import du thème
         out["theme"] = self._importTheme()
@@ -336,6 +339,23 @@ class LLMHelper:
             )
 
         return id
+
+    def _checkGrammar(self)->None:
+        """Lève une ConflictError (409) si l'uid de la règle de grammaire existe
+        déjà. Les lignes supprimées (deleted_at) sont incluses : la contrainte
+        unique `unq_grammar_rules` porte aussi sur elles."""
+        uid = self.getGrammar()["uid"]
+        rules = get_model("grammar_rule").table
+        existing = self._db.execute(
+            select(rules.c.id, rules.c.name, rules.c.deleted_at).where(rules.c.uid == uid)
+        ).first()
+        if existing is not None:
+            raise ConflictError(
+                f"La règle de grammaire '{uid}' existe déjà (id {existing.id} : {existing.name}"
+                + (", supprimée" if existing.deleted_at is not None else "")
+                + "). Choisir une autre règle de grammaire.",
+                details={"grammar_uid" : uid, "grammar_rule_id" : existing.id}
+            )
 
     def _importGrammar(self)->id:
         g = self.getGrammar()
