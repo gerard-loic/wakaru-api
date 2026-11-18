@@ -14,6 +14,9 @@ MIN_ITEMS = 5
 #Sujets tirés au hasard par le mode mix
 MIX_SUBJECTS = ["words", "hiraganas", "katakanas", "kanjis", "sentences"]
 
+#Nombre maximum de leurres écartés (car synonymes ou homonymes de la réponse) par question
+MAX_REJECTED_PROPOSITIONS = 20
+
 #Programme d'un thème : nombre de jours, sujets d'entraînement et type "exercice du thème"
 PROGRAM_DAYS = 7
 PROGRAM_SUBJECTS = ["words", "katakanas", "hiraganas", "sentences", "kanjis"]
@@ -362,16 +365,34 @@ class TrainingHelper:
             }
 
             ids = [subject_item["id"]]
+            #Valeurs déjà "prises" côté question et côté réponse : un leurre qui en
+            #partage une serait aussi une bonne réponse (ex. ko / kodomo = enfant)
+            question_values = self._getAttributeValues(subject_item, mode_answer["question.text.attribute"], mode_answer["question.text.attribute.listitem"])
+            answer_values = self._getAttributeValues(subject_item, mode_answer["answer.text.attribute"], mode_answer["answer.text.attribute.listitem"])
+            #Éléments écartés car ambigus : ni proposés, ni retirés
+            rejected = []
             for i in range(3):
-                proposition_item = self._model.getRandom(
-                    table=subject,
-                    user_id=self._user_id,
-                    focus="random",
-                    avoid_ids=ids,
-                    load=conf["item_relations"],
-                    filters=conf["item_filters"]
-                )
-                #Pas assez d'éléments connus pour 3 propositions
+                proposition_item = None
+                while len(rejected) < MAX_REJECTED_PROPOSITIONS:
+                    proposition_item = self._model.getRandom(
+                        table=subject,
+                        user_id=self._user_id,
+                        focus="random",
+                        avoid_ids=ids + rejected,
+                        load=conf["item_relations"],
+                        filters=conf["item_filters"]
+                    )
+                    if proposition_item is None:
+                        break
+                    p_question = self._getAttributeValues(proposition_item, mode_answer["question.text.attribute"], mode_answer["question.text.attribute.listitem"])
+                    p_answer = self._getAttributeValues(proposition_item, mode_answer["answer.text.attribute"], mode_answer["answer.text.attribute.listitem"])
+                    if not (p_question & question_values) and not (p_answer & answer_values):
+                        question_values |= p_question
+                        answer_values |= p_answer
+                        break
+                    rejected.append(proposition_item["id"])
+                    proposition_item = None
+                #Pas assez d'éléments connus (et non ambigus) pour 3 propositions
                 if proposition_item is None:
                     break
 
@@ -447,6 +468,15 @@ class TrainingHelper:
             if m["element_from"] == element_from and m["element_to"] == element_to:
                 return m
         raise Exception(f"No mode configured from {element_from} to {element_to}")
+
+    def _getAttributeValues(self, item:dict, attribute:str, list_item)->set:
+        """Toutes les valeurs normalisées d'un attribut : pour un attribut liste
+        (ex. `translations`), toutes ses entrées et pas seulement celle affichée."""
+        if attribute is None:
+            return set()
+        value = item[attribute]
+        values = json.loads(value) if list_item is not None and value else [value]
+        return {str(v).strip().lower() for v in values if v not in (None, "")}
 
     def _getAttributeValue(self, item:dict, attribute:str, list_item)->str:
         if attribute is None:
