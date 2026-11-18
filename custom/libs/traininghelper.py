@@ -169,7 +169,8 @@ class TrainingHelper:
                     "focus" : f["focus"],
                     "name" : TRAININGCONF[subject]["program_names"][f["focus"]]
                 }
-                for m in api["modes"] for f in focus
+                #Les modes expérimentaux ne sont jamais programmés
+                for m in api["modes"] if not m.get("experimental", False) for f in focus
             ]
             if items:
                 out[subject] = items
@@ -363,6 +364,9 @@ class TrainingHelper:
                 "instructions" : mode_answer["question.instructions"],
                 "propositions" : []
             }
+            #Note éventuelle à afficher avec la question (ex. mode expérimental)
+            if mode_answer.get("question.note"):
+                q_out["note"] = mode_answer["question.note"]
 
             #Mode sans propositions (ex. dessin) : l'application juge elle-même la réponse,
             #on lui fournit donc la réponse attendue

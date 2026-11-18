@@ -228,6 +228,7 @@ TRAININGCONF = {
                 "answer.reading.attribute.listitem" : None,
                 #Pas de propositions : l'application juge elle-même le dessin
                 "propositions" : False,
+                "question.note" : "Mode expérimental : la reconnaissance du dessin peut encore se tromper",
                 "question.instructions" : "Dessinez l'hiragana qui correspond à ce son"
             }
         ],
@@ -248,7 +249,10 @@ TRAININGCONF = {
                 {
                     "name" : "Dessiner les hiraganas",
                     "element_from" : "reading",
-                    "element_to" : ["drawing"]
+                    "element_to" : ["drawing"],
+                    #Mode expérimental : signalé à l'utilisateur, jamais proposé dans le programme d'un thème
+                    "experimental" : True,
+                    "info" : "Mode expérimental : la reconnaissance du dessin peut encore se tromper"
                 }
             ],
             "focus" : [
@@ -321,6 +325,7 @@ TRAININGCONF = {
                 "answer.reading.attribute.listitem" : None,
                 #Pas de propositions : l'application juge elle-même le dessin
                 "propositions" : False,
+                "question.note" : "Mode expérimental : la reconnaissance du dessin peut encore se tromper",
                 "question.instructions" : "Dessinez le katakana qui correspond à ce son"
             }
         ],
@@ -341,7 +346,10 @@ TRAININGCONF = {
                 {
                     "name" : "Dessiner les katakanas",
                     "element_from" : "reading",
-                    "element_to" : ["drawing"]
+                    "element_to" : ["drawing"],
+                    #Mode expérimental : signalé à l'utilisateur, jamais proposé dans le programme d'un thème
+                    "experimental" : True,
+                    "info" : "Mode expérimental : la reconnaissance du dessin peut encore se tromper"
                 }
             ],
             "focus" : [
