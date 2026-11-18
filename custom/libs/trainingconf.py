@@ -3,7 +3,8 @@ TRAININGCONF = {
         "program_names" : {
             "theme" : "Travailler le vocabulaire du thème",
             "weakness" : "Travailler le vocabulaire difficile",
-            "random" : "Travailler du vocabulaire au hasard"
+            "random" : "Travailler du vocabulaire au hasard",
+            "revision" : "Réviser le vocabulaire en cours ou acquis"
         },
         "item_relations" : ["partofspeech"],
         "item_filters" : {
@@ -83,6 +84,10 @@ TRAININGCONF = {
                 {
                     "name" : "Mots aléatoires",
                     "focus" : "random"
+                },
+                {
+                    "name" : "Mots en cours d'acquisition ou maîtrisés",
+                    "focus" : "revision"
                 }
             ]
         }
@@ -90,7 +95,8 @@ TRAININGCONF = {
     "kanjis" : {
         "program_names" : {
             "weakness" : "Travailler les kanjis difficiles",
-            "random" : "Travailler des kanjis au hasard"
+            "random" : "Travailler des kanjis au hasard",
+            "revision" : "Réviser les kanjis en cours ou acquis"
         },
         "item_relations" : [],
         "item_filters" : {},
@@ -164,6 +170,10 @@ TRAININGCONF = {
                 {
                     "name" : "Kanjis aléatoires",
                     "focus" : "random"
+                },
+                {
+                    "name" : "Kanjis en cours d'acquisition ou maîtrisés",
+                    "focus" : "revision"
                 }
             ]
         }
@@ -172,6 +182,7 @@ TRAININGCONF = {
         "program_names" : {
             "weakness" : "Travailler les hiraganas difficiles",
             "random" : "Travailler des hiraganas au hasard",
+            "revision" : "Réviser les hiraganas en cours ou acquis",
             "progressive" : "Travailler les hiraganas progressivement"
         },
         "item_relations" : [],
@@ -230,6 +241,10 @@ TRAININGCONF = {
                     "focus" : "random"
                 },
                 {
+                    "name" : "Hiraganas en cours d'acquisition ou maîtrisés",
+                    "focus" : "revision"
+                },
+                {
                     "name" : "Difficulté progressive",
                     "focus" : "progressive"
                 }
@@ -240,6 +255,7 @@ TRAININGCONF = {
         "program_names" : {
             "weakness" : "Travailler les katakanas difficiles",
             "random" : "Travailler des katakanas au hasard",
+            "revision" : "Réviser les katakanas en cours ou acquis",
             "progressive" : "Travailler les katakanas progressivement"
         },
         "item_relations" : [],
@@ -298,6 +314,10 @@ TRAININGCONF = {
                     "focus" : "random"
                 },
                 {
+                    "name" : "Katakanas en cours d'acquisition ou maîtrisés",
+                    "focus" : "revision"
+                },
+                {
                     "name" : "Difficulté progressive",
                     "focus" : "progressive"
                 }
@@ -308,7 +328,8 @@ TRAININGCONF = {
         "program_names" : {
             "theme" : "Travailler les phrases du thème",
             "weakness" : "Travailler les phrases difficiles",
-            "random" : "Travailler des phrases au hasard"
+            "random" : "Travailler des phrases au hasard",
+            "revision" : "Réviser les phrases en cours ou acquises"
         },
         "item_relations" : [],
         "item_filters" : {},
@@ -368,6 +389,10 @@ TRAININGCONF = {
                 {
                     "name" : "Phrases aléatoires",
                     "focus" : "random"
+                },
+                {
+                    "name" : "Phrases en cours d'acquisition ou maîtrisées",
+                    "focus" : "revision"
                 }
             ]
         }

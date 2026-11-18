@@ -49,11 +49,11 @@ class TrainingHelper:
             if subject == "kanjis" and TrainingHelper._countKnown(model, user_id, subject, "random") < MIN_ITEMS:
                 continue
 
-            #Le focus weakness n'est proposé qu'à partir de MIN_ITEMS éléments à revoir,
-            #le focus progressive tant qu'il reste des éléments non maîtrisés
+            #Les focus weakness et revision ne sont proposés qu'à partir de MIN_ITEMS éléments
+            #concernés, le focus progressive tant qu'il reste des éléments non maîtrisés
             focus = [
                 f for f in api["focus"]
-                if (f["focus"] != "weakness" or TrainingHelper._countKnown(model, user_id, subject, "weakness") >= MIN_ITEMS)
+                if (f["focus"] not in ("weakness", "revision") or TrainingHelper._countKnown(model, user_id, subject, f["focus"]) >= MIN_ITEMS)
                 and (f["focus"] != "progressive" or TrainingHelper._countKnown(model, user_id, subject, "progressive") > 0)
             ]
             out["subjects"].append({**api, "focus" : focus})
@@ -188,7 +188,7 @@ class TrainingHelper:
         Subjects : words, hiraganas, katakanas, kanjis, sentences, mix
         element_from : char, reading, french, char_or_reading (mix)
         element_to : char, reading, french, char_or_reading (mix)
-        focus : theme, weakness, random, progressive (hiraganas et katakanas)
+        focus : theme, weakness, random, revision, progressive (hiraganas et katakanas)
         number : nombre de questions ; par défaut la clé `nb_items` du sujet dans TRAININGCONF
                 
         """

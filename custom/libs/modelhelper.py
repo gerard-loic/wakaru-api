@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import and_, func, inspect, insert, select
+from sqlalchemy import and_, func, inspect, insert, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.crud.mapper import get_association_table
@@ -176,7 +176,9 @@ class ModelHelper:
           l'utilisateur (dernier thème créé parmi ceux qu'il connaît) ;
         - "progressive" : seulement les lignes non maîtrisées, limitées aux
           PROGRESSIVE_WINDOW premières selon la colonne `order` (la table doit
-          avoir cette colonne).
+          avoir cette colonne) ;
+        - "revision" : seulement les lignes "encours" ou "maitrise" (même
+          règle que `knowledge_gating`).
 
         Les lignes dont l'id figure dans `avoid_ids` ne sont jamais choisies.
 
@@ -247,7 +249,7 @@ class ModelHelper:
         """Requête des lignes de `table` liées à `user_id` dans
         `user_knowledges`, restreintes par `focus` et `filters` (voir
         `getRandom`). Sélectionne la ligne et son `user_knowledge`."""
-        if focus not in ("random", "weakness", "theme", "progressive"):
+        if focus not in ("random", "weakness", "theme", "progressive", "revision"):
             raise ValueError(f"Focus '{focus}' non supporté.")
 
         model = resolve_model(table)
@@ -261,6 +263,9 @@ class ModelHelper:
         ))
         if focus == "weakness":
             query = query.where(knowledge_type_conditions()["arevoir"])
+        if focus == "revision":
+            conditions = knowledge_type_conditions()
+            query = query.where(or_(conditions["encours"], conditions["maitrise"]))
         if focus == "theme":
             query = query.where(model.pk_column.in_(self._themeIdsQuery(model, user_id)))
         if hasattr(python_class, "deleted_at"):
