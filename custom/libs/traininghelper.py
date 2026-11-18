@@ -187,7 +187,7 @@ class TrainingHelper:
         """
         Subjects : words, hiraganas, katakanas, kanjis, sentences, mix
         element_from : char, reading, french, char_or_reading (mix)
-        element_to : char, reading, french, char_or_reading (mix)
+        element_to : char, reading, french, char_or_reading (mix), drawing (hiraganas et katakanas)
         focus : theme, weakness, random, revision, progressive (hiraganas et katakanas)
         number : nombre de questions ; par défaut la clé `nb_items` du sujet dans TRAININGCONF
                 
@@ -206,7 +206,7 @@ class TrainingHelper:
             raise Exception(f"Element_from {element_from} not supported")
         
         for et in element_to:
-            if et not in ["char", "reading", "french", "char_or_reading"]:
+            if et not in ["char", "reading", "french", "char_or_reading", "drawing"]:
                 raise Exception(f"Element_to {et} not supported")
 
         conf = TrainingHelper.getConfiguration(db, user_id)
@@ -363,6 +363,20 @@ class TrainingHelper:
                 "instructions" : mode_answer["question.instructions"],
                 "propositions" : []
             }
+
+            #Mode sans propositions (ex. dessin) : l'application juge elle-même la réponse,
+            #on lui fournit donc la réponse attendue
+            if not mode_answer.get("propositions", True):
+                q_out["answer"] = {
+                    "id" : subject_item["id"],
+                    "text" : self._getAttributeValue(
+                        item=subject_item,
+                        attribute=mode_answer["answer.text.attribute"],
+                        list_item=mode_answer["answer.text.attribute.listitem"]
+                    )
+                }
+                out["questions"].append(q_out)
+                continue
 
             ids = [subject_item["id"]]
             #Valeurs déjà "prises" côté question et côté réponse : un leurre qui en

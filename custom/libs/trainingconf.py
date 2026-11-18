@@ -214,6 +214,21 @@ TRAININGCONF = {
                 "answer.reading.attribute" : None,
                 "answer.reading.attribute.listitem" : None,
                 "question.instructions" : "Quel est le son correspondant à cet hiragana ?"
+            },
+            {
+                "element_from" : "reading",
+                "element_to" : "drawing",
+                "question.text.attribute" : "pronunciation",
+                "question.text.attribute.listitem" : None,
+                "question.reading.attribute" : None,
+                "question.reading.attribute.listitem" : None,
+                "answer.text.attribute" : "hiragana",
+                "answer.text.attribute.listitem" : None,
+                "answer.reading.attribute" : None,
+                "answer.reading.attribute.listitem" : None,
+                #Pas de propositions : l'application juge elle-même le dessin
+                "propositions" : False,
+                "question.instructions" : "Dessinez l'hiragana qui correspond à ce son"
             }
         ],
         "api" : {
@@ -229,6 +244,11 @@ TRAININGCONF = {
                     "name" : "Des hiraganas au son",
                     "element_from" : "char",
                     "element_to" : ["reading"]
+                },
+                {
+                    "name" : "Dessiner les hiraganas",
+                    "element_from" : "reading",
+                    "element_to" : ["drawing"]
                 }
             ],
             "focus" : [
@@ -287,6 +307,21 @@ TRAININGCONF = {
                 "answer.reading.attribute" : None,
                 "answer.reading.attribute.listitem" : None,
                 "question.instructions" : "Quel est le son correspondant à cet hiragana ?"
+            },
+            {
+                "element_from" : "reading",
+                "element_to" : "drawing",
+                "question.text.attribute" : "pronunciation",
+                "question.text.attribute.listitem" : None,
+                "question.reading.attribute" : None,
+                "question.reading.attribute.listitem" : None,
+                "answer.text.attribute" : "katakana",
+                "answer.text.attribute.listitem" : None,
+                "answer.reading.attribute" : None,
+                "answer.reading.attribute.listitem" : None,
+                #Pas de propositions : l'application juge elle-même le dessin
+                "propositions" : False,
+                "question.instructions" : "Dessinez le katakana qui correspond à ce son"
             }
         ],
         "api" : {
@@ -302,6 +337,11 @@ TRAININGCONF = {
                     "name" : "Des katakanas au son",
                     "element_from" : "char",
                     "element_to" : ["reading"]
+                },
+                {
+                    "name" : "Dessiner les katakanas",
+                    "element_from" : "reading",
+                    "element_to" : ["drawing"]
                 }
             ],
             "focus" : [
