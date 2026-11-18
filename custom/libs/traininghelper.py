@@ -18,6 +18,8 @@ MIX_SUBJECTS = ["words", "hiraganas", "katakanas", "kanjis", "sentences"]
 PROGRAM_DAYS = 7
 PROGRAM_SUBJECTS = ["words", "katakanas", "hiraganas", "sentences", "kanjis"]
 PROGRAM_EXERCISES_TYPE = "exercises"
+#Types dont au moins un exercice doit figurer chaque jour du programme
+PROGRAM_CORE_TYPES = ["words", "sentences", PROGRAM_EXERCISES_TYPE]
 
 
 class _TrainingSettings(BaseSettings):
@@ -65,8 +67,15 @@ class TrainingHelper:
         {"day1" : [...], ..., "day7" : [...]}, chaque jour listant `per_day` exercices
         (par défaut WAKARU_PROGRAM_EXERCISES_PER_DAY) tous différents.
 
-        Le type est tiré au hasard, puis un exercice de ce type. Un jour compte moins
-        de `per_day` exercices s'il n'y a pas assez de combinaisons disponibles.
+        Règles :
+        - chaque exercice du thème est placé exactement une fois dans la semaine,
+          sur des jours différents tant que c'est possible ;
+        - chaque jour compte au moins un exercice "cœur" (vocabulaire, phrases ou
+          exercice du thème), si des candidats existent ;
+        - le reste est complété au hasard (type tiré au hasard, puis un exercice de ce type).
+
+        Un jour compte moins de `per_day` exercices s'il n'y a pas assez de combinaisons
+        disponibles.
 
         Rien n'est écrit en base. Les `user_knowledge` du thème doivent déjà exister :
         ils déterminent ce qui est possible pour l'utilisateur.
@@ -76,17 +85,38 @@ class TrainingHelper:
 
         candidates = TrainingHelper._getProgramCandidates(db, user_id, theme_id)
 
+        #Exercices du thème : répartis une seule fois chacun, hors du tirage quotidien
+        theme_exercises = candidates.pop(PROGRAM_EXERCISES_TYPE, [])
+        days = {day : [] for day in range(1, PROGRAM_DAYS + 1)}
+        random.shuffle(theme_exercises)
+        for exercise in theme_exercises:
+            #Jours distincts en priorité, puis les jours les moins chargés
+            free = [d for d, items in days.items() if len(items) == min(len(x) for x in days.values())]
+            days[random.choice(free)].append({**exercise, "done" : False})
+
         out = {}
-        for day in range(1, PROGRAM_DAYS + 1):
+        for day, items in days.items():
             #Tirage sans remise : deux exercices identiques sont impossibles le même jour
-            remaining = {type_ : list(items) for type_, items in candidates.items()}
-            out[f"day{day}"] = []
-            while remaining and len(out[f"day{day}"]) < per_day:
-                type_ = random.choice(list(remaining))
-                items = remaining[type_]
-                out[f"day{day}"].append({**items.pop(random.randrange(len(items))), "done" : False})
-                if not items:
+            remaining = {type_ : list(c) for type_, c in candidates.items()}
+
+            def draw(types:list)->None:
+                type_ = random.choice(types)
+                pool = remaining[type_]
+                items.append({**pool.pop(random.randrange(len(pool))), "done" : False})
+                if not pool:
                     del remaining[type_]
+
+            #Au moins un exercice cœur par jour
+            has_core = any(i["type"] in PROGRAM_CORE_TYPES for i in items)
+            core = [t for t in PROGRAM_CORE_TYPES if t in remaining]
+            if not has_core and core and len(items) < per_day:
+                draw(core)
+
+            while remaining and len(items) < per_day:
+                draw(list(remaining))
+
+            random.shuffle(items)
+            out[f"day{day}"] = items
 
         return out
 
